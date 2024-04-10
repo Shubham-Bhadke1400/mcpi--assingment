@@ -18,35 +18,68 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include "stm32f4xx.h"
 #include "system_stm32f4xx.h"
-
-#include "i2c_lcd.h"
-#include "rtc.h"
 #include "uart.h"
+#include "adc.h"
+#include "switch.h"
+#include "i2c_lcd.h"
+
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
 
 int main(void)
-{
-	char str1[24], str2[20];
-	RTC_Date d, dt = { .Date = 28, .Month = 2, .Year = 24, .WeekDay = 7 };
-	RTC_Time t, tm = { .Hours = 23, .Minutes = 59, .Seconds = 50 };
-
+{   int ret;
+	char str[32];
+	uint16_t val;
 	SystemInit();
-	UartInit(BAUD_9600);
-	
-	RTC_Init(&dt, &tm);
-	while(1) {
-		RTC_GetTime(&t);
-		RTC_GetDate(&d);
-		sprintf(str1, "\rDT=%02d-%02d-%02d W=%d", d.Date, d.Month, d.Year, d.WeekDay);
-		sprintf(str2, "TM=%02d:%02d:%02d", t.Hours, t.Minutes, t.Seconds);
-		UartPuts(str1);
-	    UartPuts(str2);
+	ADC_Init();
+	SwitchInit(SWITCH);
+
+    ret = LcdInit();
+
+    //UartInit(BAUD_9600);
+	//UartPuts("DESD ADC Demo...\r\n");
+
+	while(1){
+
+		// ADC output on LCD when switch pressed
+		if (ret){
+			while(exti0_flag == 0)
+				;
+			val = ADC_GetValue();
+			sprintf(str,"ADC=%d",val);
+			LcdPuts(LCD_LINE1,str);
+			DelayMs(1000);
+			exti0_flag = 0;
+		     }
+
+
+		/*
+		//ADC output on minicom using uart
+		val = ADC_GetValue();
+		sprintf(str, "ADC=%d\r\n", val);
+		UartPuts(str);
 		DelayMs(1000);
+         */
+
+
+		/*
+		//Adc value disply on minicom on switch press
+
+		while(exti0_flag == 0)
+		    ;
+		val = ADC_GetValue();
+		sprintf(str,"ADC=%d\r\n",val);
+		UartPuts(str);
+		DelayMs(1000);
+		exti0_flag=0;
+        */
+
 	}
+
 	return 0;
 }
